@@ -20,7 +20,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Pencil, Plus, Save, Trash2, Loader2 } from 'lucide-react';
+import { Pencil, Plus, Trash2, Loader2 } from 'lucide-react';
 import api from '@/lib/api';
 
 export default function AdminReferencePage() {
@@ -29,14 +29,6 @@ export default function AdminReferencePage() {
   
   const [types, setTypes] = useState<any[]>([]);
   const [statuts, setStatuts] = useState<any[]>([]);
-  const [rules, setRules] = useState({
-    MAX_PDF_SIZE: 10,
-    DEPOSIT_START: '',
-    DEPOSIT_END: '',
-    ALLOW_LATE: false,
-    PLAGIARISM_WARN: 15,
-    PLAGIARISM_BLOCK: 30,
-  });
 
   const [search, setSearch] = useState('');
 
@@ -46,25 +38,14 @@ export default function AdminReferencePage() {
         setLoading(true);
         try {
             // AJOUTEZ "http://localhost:3000" DEVANT CHAQUE URL 👇
-            const [resTypes, resStatuts, resConfig] = await Promise.all([
+            const [resTypes, resStatuts] = await Promise.all([
                 api.get('http://localhost:3000/api/admin/ref/types'),
-                api.get('http://localhost:3000/api/admin/ref/statuts'),
-                api.get('http://localhost:3000/api/admin/ref/config')
+                api.get('http://localhost:3000/api/admin/ref/statuts')
             ]);
             
             // Le reste ne change pas...
             setTypes(resTypes.data);
             setStatuts(resStatuts.data);
-            
-            const config = resConfig.data;
-            setRules({
-                MAX_PDF_SIZE: Number(config.MAX_PDF_SIZE) || 10,
-                DEPOSIT_START: config.DEPOSIT_START || '',
-                DEPOSIT_END: config.DEPOSIT_END || '',
-                ALLOW_LATE: config.ALLOW_LATE === '1' || config.ALLOW_LATE === 'true',
-                PLAGIARISM_WARN: Number(config.PLAGIARISM_WARN) || 15,
-                PLAGIARISM_BLOCK: Number(config.PLAGIARISM_BLOCK) || 30,
-            });
         } catch (error) {
             console.error("Erreur API Référentiel:", error);
             toast.error("Impossible de charger le référentiel");
@@ -83,19 +64,6 @@ export default function AdminReferencePage() {
     return statuts.filter((statut) => statut.libelle.toLowerCase().includes(search.toLowerCase()));
   }, [statuts, search]);
 
-  // SAUVEGARDE DES RÈGLES
-  const handleSaveRules = async () => {
-    try {
-        await api.post('/api/admin/ref/config', {
-            ...rules,
-            ALLOW_LATE: rules.ALLOW_LATE ? '1' : '0' // Convert boolean to string for DB
-        });
-        toast.success('Règles de dépôt sauvegardées');
-    } catch(e) {
-        toast.error("Erreur sauvegarde");
-    }
-  };
-
   if (loading) return <div className="flex justify-center p-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
 
   return (
@@ -106,14 +74,12 @@ export default function AdminReferencePage() {
       />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid grid-cols-3">
+        <TabsList className="grid grid-cols-2">
           <TabsTrigger value="types">Types de rapports</TabsTrigger>
           <TabsTrigger value="statuts">Statuts</TabsTrigger>
-          <TabsTrigger value="rules">Règles de dépôt</TabsTrigger>
         </TabsList>
 
-        {activeTab !== 'rules' && (
-            <Card>
+        <Card>
             <CardHeader><CardTitle>Filtres</CardTitle></CardHeader>
             <CardContent className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
@@ -121,8 +87,7 @@ export default function AdminReferencePage() {
                 <Input id="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Rechercher..." />
                 </div>
             </CardContent>
-            </Card>
-        )}
+        </Card>
 
         <TabsContent value="types">
           <ReferenceTable
@@ -175,52 +140,6 @@ export default function AdminReferencePage() {
           />
         </TabsContent>
 
-        <TabsContent value="rules">
-          <Card>
-            <CardHeader>
-              <CardTitle>Règles de dépôt</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="max-size">Taille max PDF (MB)</Label>
-                  <Input id="max-size" type="number" value={rules.MAX_PDF_SIZE} onChange={(e) => setRules(p => ({ ...p, MAX_PDF_SIZE: Number(e.target.value) }))} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="deposit-start">Début dépôt</Label>
-                  <Input id="deposit-start" type="date" value={rules.DEPOSIT_START} onChange={(e) => setRules(p => ({ ...p, DEPOSIT_START: e.target.value }))} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="deposit-end">Fin dépôt</Label>
-                  <Input id="deposit-end" type="date" value={rules.DEPOSIT_END} onChange={(e) => setRules(p => ({ ...p, DEPOSIT_END: e.target.value }))} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Retard autorisé</Label>
-                  <div className="flex items-center gap-3">
-                    <Switch checked={rules.ALLOW_LATE} onCheckedChange={(c) => setRules(p => ({ ...p, ALLOW_LATE: c }))} />
-                    <span className="text-sm text-muted-foreground">Autoriser dépôt après la date limite</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="plagiarism-warn">Seuil warning (%)</Label>
-                  <Input id="plagiarism-warn" type="number" value={rules.PLAGIARISM_WARN} onChange={(e) => setRules(p => ({ ...p, PLAGIARISM_WARN: Number(e.target.value) }))} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="plagiarism-block">Seuil refus (%)</Label>
-                  <Input id="plagiarism-block" type="number" value={rules.PLAGIARISM_BLOCK} onChange={(e) => setRules(p => ({ ...p, PLAGIARISM_BLOCK: Number(e.target.value) }))} />
-                </div>
-              </div>
-
-              <Button onClick={handleSaveRules}>
-                <Save className="mr-2 h-4 w-4" />
-                Enregistrer les règles
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
       </Tabs>
     </AppLayout>
   );

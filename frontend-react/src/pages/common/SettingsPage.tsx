@@ -8,7 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { Link } from 'react-router-dom';
-import { Lock, Bell, ShieldCheck, KeyRound, RotateCcw } from 'lucide-react';
+import { Lock, Bell, ShieldCheck, KeyRound, RotateCcw, Save, ShieldAlert } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useAdminPlatformSettings } from '@/contexts/AdminPlatformSettingsContext';
 import { useEffect, useMemo, useState } from 'react';
@@ -61,6 +61,16 @@ export default function SettingsPage() {
   const [restoreUserId, setRestoreUserId] = useState('');
   const [restoreActive, setRestoreActive] = useState(true);
   const [restoreSubmitting, setRestoreSubmitting] = useState(false);
+  const [rules, setRules] = useState({
+    MAX_PDF_SIZE: 10,
+    DEPOSIT_START: '',
+    DEPOSIT_END: '',
+    ALLOW_LATE: false,
+    PLAGIARISM_WARN: 15,
+    PLAGIARISM_BLOCK: 30,
+  });
+  const [warningThreshold, setWarningThreshold] = useState(15);
+  const [refusalThreshold, setRefusalThreshold] = useState(30);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -83,6 +93,33 @@ export default function SettingsPage() {
       }
     };
     fetchUsers();
+  }, [isAdmin]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    const fetchConfig = async () => {
+      try {
+        const resConfig = await api.get('/api/admin/ref/config');
+        const config = resConfig.data ?? {};
+        const plagiatWarnValue = Number(config.PLAGIARISM_WARN ?? config.plagiat_warning ?? 15);
+        const plagiatBlockValue = Number(config.PLAGIARISM_BLOCK ?? config.plagiat_refusal ?? 30);
+
+        setRules({
+          MAX_PDF_SIZE: Number(config.MAX_PDF_SIZE) || 10,
+          DEPOSIT_START: config.DEPOSIT_START || '',
+          DEPOSIT_END: config.DEPOSIT_END || '',
+          ALLOW_LATE: config.ALLOW_LATE === '1' || config.ALLOW_LATE === 'true',
+          PLAGIARISM_WARN: plagiatWarnValue,
+          PLAGIARISM_BLOCK: plagiatBlockValue,
+        });
+        setWarningThreshold(Number(config.plagiat_warning ?? plagiatWarnValue));
+        setRefusalThreshold(Number(config.plagiat_refusal ?? plagiatBlockValue));
+      } catch (error) {
+        console.error(error);
+        toast.error('Impossible de charger les règles de dépôt.');
+      }
+    };
+    fetchConfig();
   }, [isAdmin]);
 
   const resetPasswordEndpoint = '/api/admin/reset-password';
@@ -146,6 +183,32 @@ export default function SettingsPage() {
 
   const restoreSubmitDisabled =
     !restoreAccessSupported || !restoreRole || !restoreUserId || restoreSubmitting;
+
+  const handleSaveRules = async () => {
+    try {
+      await api.post('/api/admin/ref/config', {
+        ...rules,
+        ALLOW_LATE: rules.ALLOW_LATE ? '1' : '0',
+      });
+      toast.success('Règles de dépôt sauvegardées');
+    } catch (error) {
+      console.error(error);
+      toast.error("Erreur lors de la sauvegarde des règles de dépôt.");
+    }
+  };
+
+  const handleSavePlagiarismSettings = async () => {
+    try {
+      await api.post('/api/admin/ref/config', {
+        plagiat_warning: warningThreshold,
+        plagiat_refusal: refusalThreshold,
+      });
+      toast.success('Paramètres de détection mis à jour');
+    } catch (error) {
+      console.error(error);
+      toast.error('Erreur lors de la sauvegarde des paramètres.');
+    }
+  };
 
   const handleRestoreAccess = async () => {
     if (!restoreAccessSupported) return;
@@ -288,6 +351,125 @@ export default function SettingsPage() {
                     </p>
                   )}
                 </div>
+              </CardContent>
+            </Card>
+          </>
+        )}
+
+        {isAdmin && (
+          <>
+            <Card>
+              <CardHeader>
+                <CardTitle>Règles de dépôt</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="max-size">Taille max PDF (MB)</Label>
+                    <Input
+                      id="max-size"
+                      type="number"
+                      value={rules.MAX_PDF_SIZE}
+                      onChange={(event) => setRules((prev) => ({ ...prev, MAX_PDF_SIZE: Number(event.target.value) }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="deposit-start">Début dépôt</Label>
+                    <Input
+                      id="deposit-start"
+                      type="date"
+                      value={rules.DEPOSIT_START}
+                      onChange={(event) => setRules((prev) => ({ ...prev, DEPOSIT_START: event.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="deposit-end">Fin dépôt</Label>
+                    <Input
+                      id="deposit-end"
+                      type="date"
+                      value={rules.DEPOSIT_END}
+                      onChange={(event) => setRules((prev) => ({ ...prev, DEPOSIT_END: event.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Retard autorisé</Label>
+                    <div className="flex items-center gap-3">
+                      <Switch
+                        checked={rules.ALLOW_LATE}
+                        onCheckedChange={(checked) => setRules((prev) => ({ ...prev, ALLOW_LATE: checked }))}
+                      />
+                      <span className="text-sm text-muted-foreground">Autoriser dépôt après la date limite</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="plagiarism-warn">Seuil warning (%)</Label>
+                    <Input
+                      id="plagiarism-warn"
+                      type="number"
+                      value={rules.PLAGIARISM_WARN}
+                      onChange={(event) =>
+                        setRules((prev) => ({ ...prev, PLAGIARISM_WARN: Number(event.target.value) }))
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="plagiarism-block">Seuil refus (%)</Label>
+                    <Input
+                      id="plagiarism-block"
+                      type="number"
+                      value={rules.PLAGIARISM_BLOCK}
+                      onChange={(event) =>
+                        setRules((prev) => ({ ...prev, PLAGIARISM_BLOCK: Number(event.target.value) }))
+                      }
+                    />
+                  </div>
+                </div>
+
+                <Button onClick={handleSaveRules}>
+                  <Save className="mr-2 h-4 w-4" />
+                  Enregistrer les règles
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Paramètres globaux</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="flex items-start gap-3 rounded-lg border border-amber-100 bg-amber-50 p-3">
+                  <ShieldAlert className="h-5 w-5 shrink-0 text-amber-600" />
+                  <p className="text-xs text-amber-800">
+                    Ces seuils s'appliquent à tous les rapports déposés. Une alerte est envoyée si le score dépasse le
+                    seuil warning.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Seuil d'Avertissement (%)</Label>
+                  <Input
+                    type="number"
+                    value={warningThreshold}
+                    onChange={(event) => setWarningThreshold(Number(event.target.value))}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Seuil de Refus Automatique (%)</Label>
+                  <Input
+                    type="number"
+                    value={refusalThreshold}
+                    onChange={(event) => setRefusalThreshold(Number(event.target.value))}
+                  />
+                </div>
+
+                <Button onClick={handleSavePlagiarismSettings}>
+                  <Save className="mr-2 h-4 w-4" />
+                  Sauvegarder les seuils
+                </Button>
               </CardContent>
             </Card>
           </>
