@@ -1,0 +1,33 @@
+import { ShieldAlert, ArrowLeft } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useNavigate } from 'react-router-dom';
+
+export function ForbiddenPage() {
+  const navigate = useNavigate();
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="text-center space-y-6 animate-fade-in">
+        <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-destructive/10 mb-4">
+          <ShieldAlert className="w-10 h-10 text-destructive" />
+        </div>
+        <div className="space-y-2">
+          <h1 className="text-4xl font-bold text-foreground">403</h1>
+          <h2 className="text-xl font-semibold text-foreground">Accès Refusé</h2>
+          <p className="text-muted-foreground max-w-md mx-auto">
+            Vous n'avez pas les permissions nécessaires pour accéder à cette page.
+          </p>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <Button variant="outline" onClick={() => navigate(-1)}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Retour
+          </Button>
+          <Button onClick={() => navigate('/')}>
+            Retour à l'accueil
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
