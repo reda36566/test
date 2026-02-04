@@ -24,7 +24,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { ShieldAlert, SlidersHorizontal, Loader2, Search } from 'lucide-react';
+import { Loader2, Search } from 'lucide-react';
 import api from '@/lib/api';
 
 export default function AdminPlagiarismPage() {
@@ -55,8 +55,12 @@ export default function AdminPlagiarismPage() {
       setPlagiatData(resPlagiat.data || []);
       
       // Chargement des seuils depuis la config serveur
-      if (resConfig.data.plagiat_warning) setWarningThreshold(Number(resConfig.data.plagiat_warning));
-      if (resConfig.data.plagiat_refusal) setRefusalThreshold(Number(resConfig.data.plagiat_refusal));
+      if (resConfig.data.plagiat_warning || resConfig.data.PLAGIARISM_WARN) {
+        setWarningThreshold(Number(resConfig.data.plagiat_warning ?? resConfig.data.PLAGIARISM_WARN));
+      }
+      if (resConfig.data.plagiat_refusal || resConfig.data.PLAGIARISM_BLOCK) {
+        setRefusalThreshold(Number(resConfig.data.plagiat_refusal ?? resConfig.data.PLAGIARISM_BLOCK));
+      }
     } catch (error) {
       toast.error("Erreur de chargement des données de plagiat");
     } finally {
@@ -82,19 +86,6 @@ export default function AdminPlagiarismPage() {
       return matchesSearch && matchesThreshold;
     });
   }, [plagiatData, searchQuery, thresholdFilter, warningThreshold, refusalThreshold]);
-
-  // 3. SAUVEGARDE DES SEUILS DANS LA CONFIG
-  const handleSaveSettings = async () => {
-    try {
-      await api.post('/api/admin/ref/config', {
-        plagiat_warning: warningThreshold,
-        plagiat_refusal: refusalThreshold
-      });
-      toast.success('Paramètres de détection mis à jour');
-    } catch (error) {
-      toast.error("Erreur lors de la sauvegarde des paramètres");
-    }
-  };
 
   // 4. ENREGISTRER UNE DÉCISION
   const handleDecisionSave = async () => {
@@ -126,12 +117,6 @@ export default function AdminPlagiarismPage() {
       <PageHeader
         title="Plagiat"
         description="Gestion des analyses de similarité et décisions"
-        actions={
-          <Button variant="default" onClick={handleSaveSettings}>
-            <SlidersHorizontal className="mr-2 h-4 w-4" />
-            Sauvegarder les seuils
-          </Button>
-        }
       />
 
       <div className="grid gap-6 lg:grid-cols-3">
@@ -206,38 +191,6 @@ export default function AdminPlagiarismPage() {
           </CardContent>
         </Card>
 
-        {/* PANNEAU DE CONFIGURATION DES SEUILS */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Paramètres globaux</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-100 rounded-lg">
-              <ShieldAlert className="h-5 w-5 text-amber-600 shrink-0" />
-              <p className="text-xs text-amber-800">
-                Ces seuils s'appliquent à tous les rapports déposés. Une alerte est envoyée si le score dépasse le seuil warning.
-              </p>
-            </div>
-            
-            <div className="space-y-2">
-              <Label>Seuil d'Avertissement (%)</Label>
-              <Input
-                type="number"
-                value={warningThreshold}
-                onChange={(e) => setWarningThreshold(Number(e.target.value))}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label>Seuil de Refus Automatique (%)</Label>
-              <Input
-                type="number"
-                value={refusalThreshold}
-                onChange={(e) => setRefusalThreshold(Number(e.target.value))}
-              />
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       {/* MODAL DE DÉCISION */}

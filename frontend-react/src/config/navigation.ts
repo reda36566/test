@@ -4,7 +4,6 @@ import {
   FileText,
   Users,
   GraduationCap,
-  BookOpen,
   Bell,
   ClipboardList,
   History,
@@ -91,12 +90,6 @@ export const navItems: NavItem[] = [
     title: 'Académique',
     href: '/admin/academic',
     icon: GraduationCap,
-    roles: ['ADMIN'],
-  },
-  {
-    title: 'Référentiel',
-    href: '/admin/reference',
-    icon: BookOpen,
     roles: ['ADMIN'],
   },
   {

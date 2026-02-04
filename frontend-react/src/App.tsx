@@ -41,7 +41,7 @@ import AdminUserCreatePage from "@/pages/admin/users/AdminUserCreatePage";
 import AdminUserDetailPage from "@/pages/admin/users/AdminUserDetailPage";
 import AdminUserEditPage from "@/pages/admin/users/AdminUserEditPage";
 import AdminAcademicPage from "@/pages/admin/AdminAcademicPage";
-import AdminReferencePage from "@/pages/admin/AdminReferencePage";
+import AdminParametresPage from "@/pages/admin/AdminParametresPage";
 import AdminReportsPage from "@/pages/admin/AdminReportsPage";
 import AdminReportDetailPage from "@/pages/admin/AdminReportDetailPage";
 import AdminPlagiarismPage from "@/pages/admin/AdminPlagiarismPage";
@@ -86,6 +86,14 @@ function RoleBasedRedirect() {
   }
 }
 
+function SettingsRoute() {
+  const { user } = useAuth();
+  if (user?.role === 'ADMIN') {
+    return <AdminParametresPage />;
+  }
+  return <SettingsPage />;
+}
+
 function AppRoutes() {
   return (
     <Routes>
@@ -124,7 +132,6 @@ function AppRoutes() {
       <Route path="/admin/users/:id" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminUserDetailPage /></ProtectedRoute>} />
       <Route path="/admin/users/:id/edit" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminUserEditPage /></ProtectedRoute>} />
       <Route path="/admin/academic" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminAcademicPage /></ProtectedRoute>} />
-      <Route path="/admin/reference" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminReferencePage /></ProtectedRoute>} />
       <Route path="/admin/reports" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminReportsPage /></ProtectedRoute>} />
       <Route path="/admin/report/:id" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminReportDetailPage /></ProtectedRoute>} />
       <Route path="/admin/plagiarism" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminPlagiarismPage /></ProtectedRoute>} />
@@ -135,7 +142,7 @@ function AppRoutes() {
       {/* Common routes */}
       <Route path="/change-password" element={<ProtectedRoute><ChangePasswordPage /></ProtectedRoute>} />
       <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
-      <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+      <Route path="/settings" element={<ProtectedRoute><SettingsRoute /></ProtectedRoute>} />
       <Route path="/help" element={<ProtectedRoute><HelpPage /></ProtectedRoute>} />
 
       {/* 404 */}
